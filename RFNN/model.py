@@ -40,20 +40,34 @@ class RFNN(object):
 
             hermite = utils.initialize_hermite_basis(self._sigmas[0], self._filter_extents[0], self._num_bases[0]) # [num_basis, h, w]
             hermite = np.transpose(hermite, axes=[1,2,0])
-            hermite = np.expand_dims(hermite, -1)
+            hermite = np.expand_dims(hermite, 2)
 
-            weights = tf.Variable(hermite, dtype=tf.float32, name="weights")
-            alphas  = tf.Variable(utils.initialize_alphas(self._num_bases[0], 1, self._num_bases[0]), dtype=tf.float32, name="alphas")
+            # Note: filters are not trainable, alphas are.
+            filters = tf.Variable(hermite, dtype=tf.float32, name="weights", trainable=False)
+            alphas  = tf.Variable(utils.initialize_alphas(64, 1, self._num_bases[0]), dtype=tf.float32, name="alphas")
 
-            print("weights", weights.shape)
-            print("alphas", alphas.shape)
+            print(filters.shape)
+            print(alphas.shape)
+            exit()
 
+            # TODO: combine filters and alphas here in linear combination.
+
+            # Compute convolution of filters with inputs (Algorithm 1: Step 2)
             h = tf.pad(inputs, paddings=[[0,0],[5,5],[5,5],[0,0]], name='padding')
+            h = tf.nn.conv2d(h, filters, strides=[1,1,1,1], padding='SAME', name='conv')
+            h = tf.nn.relu(h, name='relu')  # [num_batch, h, w, c]
+            h = tf.nn.max_pool(h, ksize=[1,3,3,1], strides=[1,2,2,1], padding='SAME')
+            # add: crossnormalizer, dropout
+
+            # Obtain the output map by linear combination with alphas (Algorithm 1: Step 3)
+
+
+
+
             print(h.shape)
-            h = tf.nn.conv2d(h, weights, strides=[1,1,1,1], padding='SAME', name='conv')
-            print(h.shape)
-            h = tf.nn.max_pool(h, ksize=3, strides=2)
-            h = tf.nn.relu(h, name='relu')
+
+
+
 
         return h
 
