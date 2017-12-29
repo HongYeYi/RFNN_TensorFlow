@@ -17,30 +17,84 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 
 from RFNN.model import RFNN
 
+
 def train_mnist():
 
-    # Define the network parameters
+    # MNIST
+    output_dim = 10
+
+    # RFNN parameters
     sigmas         = (1.5, 1.0, 1.0)
     num_bases      = (10, 6, 6)
     filter_extents = (5, 3, 3)
+    num_combine    = (64, 64, 64)
+
+    # Convolutional parameters
+    conv_padding = (5, 0, 0)
+    pool_stride  = (1, 1, 1)
+    pool_ksize   = (2, 2, 2)
+    dropout_kp   = (1.0, 1.0, 1.0)
+
+    # Train settings
+    num_epochs = 1000
+    learning_rate = 0.0005
+    batch_size = 64
+
+    # Load MNIST
+    dataset = input_data.read_data_sets('./data/MNIST/', one_hot=True)
+
+    # Input placeholders
+    images = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
+    labels = tf.placeholder(tf.int32, shape=[None, 10])
 
     # Initialize the RFNN model
-    model = RFNN(sigmas, filter_extents, num_bases)
+    model = RFNN(
+        output_dim=output_dim,
+        sigmas=sigmas,
+        filter_extents=filter_extents,
+        num_bases=num_bases,
+        num_combinations=num_combine,
+        conv_padding=conv_padding,
+        pool_ksize=pool_ksize,
+        pool_stride=pool_stride,
+        dropout_kp=dropout_kp
+    )
 
-    inputs = tf.placeholder(tf.float32, shape=[None,256,256,1])
-    logits = model.logits(inputs)
+    global_step = tf.train.get_or_create_global_step()
+
+    # Model outputs
+    logits = model.logits(images)
+
+    # Cross-entropy loss
+    loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
+    loss = tf.reduce_mean(loss)
+
+    # Optimizer
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    train_op = optimizer.minimize(loss, global_step)
 
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
 
-    random_images = np.random.uniform(0, 1, size=(32, 256, 256, 1))
-    res = sess.run(logits, feed_dict={inputs: random_images})
+    num_steps = int((num_epochs*dataset.train.num_examples)/batch_size)
 
-    print(res)
+    for _ in range(num_steps):
+
+        ops = {'train_op': train_op, 'loss': loss, 'logits': logits}
+
+        trn_images, trn_labels = dataset.train.next_batch(batch_size)
+        trn_images = trn_images.reshape(-1, 28, 28, 1)
+
+        # Run training operation
+        fetches = sess.run(ops, feed_dict={images: trn_images, labels: trn_labels})
+
+        print("Loss = {}".format(fetches['loss']))
 
 
 
