@@ -79,7 +79,6 @@ class RFNN(object):
         self._pool_stride = pool_stride
         self._dropout_kp = dropout_kp
 
-
     def logits(self, images):
 
         layer_outputs = []

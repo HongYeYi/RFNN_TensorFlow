@@ -16,6 +16,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
+import datetime
 import numpy as np
 
 import tensorflow as tf
@@ -70,6 +72,7 @@ def train_mnist():
 
     # Model outputs
     logits = model.logits(images)
+    accuracy = tf.contrib.metrics.accuracy(tf.argmax(labels, 1), tf.argmax(logits, 1))
 
     # Cross-entropy loss
     loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
@@ -84,18 +87,29 @@ def train_mnist():
 
     num_steps = int((num_epochs*dataset.train.num_examples)/batch_size)
 
-    for _ in range(num_steps):
+    # Training ops
+    ops = {'train_op': train_op, 'loss': loss, 'accuracy': accuracy}
 
-        ops = {'train_op': train_op, 'loss': loss, 'logits': logits}
+    for step in range(num_steps):
 
+        # Only for time measurement of step through network
+        t1 = time.time()
+
+        # Get a train batch
         trn_images, trn_labels = dataset.train.next_batch(batch_size)
         trn_images = trn_images.reshape(-1, 28, 28, 1)
 
         # Run training operation
         fetches = sess.run(ops, feed_dict={images: trn_images, labels: trn_labels})
 
-        print("Loss = {}".format(fetches['loss']))
+        # Only for time measurement of step through network
+        t2 = time.time()
+        examples_per_second = batch_size / float(t2 - t1)
 
+        print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, Accuracy = {:.2f}, Loss = {:.3f}".format(
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), step+1, int(num_steps),
+            batch_size, examples_per_second, fetches['accuracy'], fetches['loss']
+        ))
 
 
 if __name__ == "__main__":
