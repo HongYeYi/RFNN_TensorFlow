@@ -56,18 +56,18 @@ def rfnn_layer(var_scope, inputs, sigma, filter_extent, num_bases, num_combinati
 
 class RFNN(object):
 
-    def __init__(self, output_dim, sigmas, filter_extents, num_bases, num_combinations,
-                 conv_padding, pool_ksize, pool_stride, dropout_kp):
+    def __init__(self, num_classes, sigmas, filter_extents, num_bases, num_combinations,
+                 conv_padding, pool_ksize, pool_stride):
 
         # Define the output dimensionality
-        self._output_dim = output_dim
+        self._num_classes = num_classes
 
         # Define the number of conv layers
         self._num_layers = len(sigmas)
 
         # Check that all parameters have the same number of layers
         if not all(len(lst) == self._num_layers for lst in
-                   [filter_extents, num_bases, num_combinations, conv_padding, pool_ksize, pool_stride, dropout_kp]):
+                   [filter_extents, num_bases, num_combinations, conv_padding, pool_ksize, pool_stride]):
             raise ValueError("Input lists defining layers must all have the same size.")
 
         self._sigmas = sigmas
@@ -77,9 +77,8 @@ class RFNN(object):
         self._conv_padding = conv_padding
         self._pool_ksize = pool_ksize
         self._pool_stride = pool_stride
-        self._dropout_kp = dropout_kp
 
-    def logits(self, images):
+    def logits(self, images, dropout_kp):
 
         layer_outputs = []
 
@@ -99,7 +98,7 @@ class RFNN(object):
                 conv_padding=self._conv_padding[i],
                 pool_ksize=self._pool_ksize[i],
                 pool_stride=self._pool_stride[i],
-                dropout_kp = self._dropout_kp[i]
+                dropout_kp=dropout_kp
             )
 
             print("Layer {} output shape: {}".format(i+1, h.shape))
@@ -109,7 +108,7 @@ class RFNN(object):
         with tf.variable_scope("logits", reuse=tf.AUTO_REUSE):
             conv_flat = tf.layers.flatten(layer_outputs[-1], name='flatten')
             logits = tf.layers.dense(
-                conv_flat, self._output_dim,
+                conv_flat, self._num_classes,
                 kernel_initializer=tf.initializers.variance_scaling, name='logits')
             print("Layer {} output shape: {}".format(self._num_layers+1, logits.shape))
 
